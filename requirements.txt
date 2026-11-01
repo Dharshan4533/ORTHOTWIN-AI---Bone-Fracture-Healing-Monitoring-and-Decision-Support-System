@@ -1,0 +1,18 @@
+# OrthoTwin AI — Bone Fracture Healing Monitoring & Decision Support System
+# Requirements for Windows 11 / Python 3.12 - 3.13
+
+streamlit>=1.35.0
+sqlalchemy>=2.0.0
+pillow>=10.0.0
+opencv-python>=4.8.0
+numpy>=1.26.0
+pandas>=2.1.0
+plotly>=5.18.0
+reportlab>=4.0.0
+pyyaml>=6.0.0
+pytest>=8.0.0
+
+# PyTorch & Ultralytics (Detection & Segmentation)
+torch>=2.2.0
+torchvision>=0.17.0
+ultralytics>=8.1.0

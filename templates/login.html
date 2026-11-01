@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% set active_page = "login" %}
+
+{% block title %}Sign In — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card card-medical shadow-sm border-0">
+            <div class="card-header card-header-medical text-center py-3">
+                <h5 class="mb-0 fw-bold">🔐 OrthoTwin AI Sign In</h5>
+                <small class="text-white-50">Clinical Decision Support System</small>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('login_action') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Username</label>
+                        <input type="text" name="username" class="form-control" placeholder="e.g. dr_ortho" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Password</label>
+                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary fw-bold">Sign In</button>
+                    </div>
+                </form>
+
+                {% if is_dev_mode %}
+                <div class="mt-4 p-3 bg-light rounded border">
+                    <h6 class="small fw-bold text-muted mb-2">Development Accounts:</h6>
+                    <div class="small text-secondary">
+                        <div><strong>Clinician:</strong> <code>dr_ortho</code></div>
+                        <div><strong>Patient:</strong> <code>patient_demo</code></div>
+                        <div><strong>Admin:</strong> <code>admin_user</code></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white border-top text-center py-2">
+                <small class="text-muted" style="font-size: 0.75rem;">
+                    Academic Prototype — For Authorized Research Use Only
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

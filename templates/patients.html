@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% set active_page = "patients" %}
+
+{% block title %}Patient Management — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>🧑‍⚕️ Patient Directory & Case Tracking</h4>
+    <div>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newPatientModal">+ Register Patient</button>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newCaseModal">+ New Fracture Case</button>
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#newVisitModal">+ Log Visit</button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                Registered Patients & Longitudinal Histories
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="patientsAccordion">
+                    {% for p in patients %}
+                    <div class="accordion-item mb-2 border rounded">
+                        <h2 class="accordion-header" id="heading{{ p.id }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ p.id }}">
+                                <div class="d-flex justify-content-between w-100 pe-3 align-items-center">
+                                    <span>
+                                        <strong>{{ p.patient_code }}:</strong> {{ p.first_name }} {{ p.last_name }} (DOB: {{ p.dob }})
+                                    </span>
+                                    <span class="badge bg-secondary">{{ p.fracture_cases|length }} Fracture Cases</span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ p.id }}" class="accordion-collapse collapse" data-bs-parent="#patientsAccordion">
+                            <div class="accordion-body bg-light">
+                                <p class="mb-2"><strong>Gender:</strong> {{ p.gender }} | <strong>Phone:</strong> {{ p.contact_phone or 'Not provided' }}</p>
+                                <p class="mb-3"><strong>Medical History:</strong> {{ p.medical_history or 'None documented' }}</p>
+
+                                <h6>Fracture Cases:</h6>
+                                {% if p.fracture_cases %}
+                                <div class="list-group">
+                                    {% for c in p.fracture_cases %}
+                                    <div class="list-group-item bg-white">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>{{ c.case_code }} — {{ c.anatomical_site }} Fracture</strong>
+                                            <span class="badge bg-primary">{{ c.status }}</span>
+                                        </div>
+                                        <small class="text-muted">Injured on: {{ c.injury_date }} | Treatment: {{ c.initial_treatment or 'Conservative' }}</small>
+
+                                        <div class="mt-2">
+                                            <h6 class="text-secondary small fw-bold">Follow-Up Visits:</h6>
+                                            {% if c.visits %}
+                                            <table class="table table-sm table-bordered bg-light">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Visit Code</th>
+                                                        <th>Date</th>
+                                                        <th>Elapsed Days</th>
+                                                        <th>Pain (0-10)</th>
+                                                        <th>Weight Bearing</th>
+                                                        <th>Next Appt (Future)</th>
+                                                        <th>Scans</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for v in c.visits %}
+                                                    <tr>
+                                                        <td><code>{{ v.visit_code }}</code></td>
+                                                        <td>{{ v.visit_date }}</td>
+                                                        <td>{{ v.days_post_injury }} days</td>
+                                                        <td>{{ v.pain_score if v.pain_score is not None else 'N/A' }}</td>
+                                                        <td>{{ v.weight_bearing_status or 'Unspecified' }}</td>
+                                                        <td>{{ v.scheduled_next_date or 'None scheduled' }}</td>
+                                                        <td><span class="badge bg-info text-dark">{{ v.xray_images|length }} images</span></td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                            {% else %}
+                                            <small class="text-muted">No visits recorded yet for this case.</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted small">No fracture cases created yet for this patient.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Register Patient -->
+<div class="modal fade" id="newPatientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('create_patient_action') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Register New Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 mb-2">
+                    <div class="col">
+                        <label class="form-label small fw-bold">First Name *</label>
+                        <input type="text" name="first_name" class="form-control" required>
+                    </div>
+                    <div class="col">
+                        <label class="form-label small fw-bold">Last Name *</label>
+                        <input type="text" name="last_name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col">
+                        <label class="form-label small fw-bold">Date of Birth (YYYY-MM-DD) *</label>
+                        <input type="date" name="dob" class="form-control" required>
+                    </div>
+                    <div class="col">
+                        <label class="form-label small fw-bold">Gender *</label>
+                        <select name="gender" class="form-select">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Contact Phone</label>
+                    <input type="text" name="contact_phone" class="form-control">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Medical History</label>
+                    <textarea name="medical_history" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">Save Patient</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 2: New Fracture Case -->
+<div class="modal fade" id="newCaseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('create_case_action') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Fracture Case</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Select Patient *</label>
+                    <select name="patient_id" class="form-select" required>
+                        {% for p in patients %}
+                        <option value="{{ p.id }}">{{ p.patient_code }}: {{ p.first_name }} {{ p.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Anatomical Fracture Site *</label>
+                    <input type="text" name="anatomical_site" class="form-control" placeholder="e.g. Distal Radius, Tibial Shaft" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Injury Date *</label>
+                    <input type="date" name="injury_date" class="form-control" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Injury Mechanism</label>
+                    <input type="text" name="injury_mechanism" class="form-control" placeholder="e.g. Fall on outstretched hand">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Initial Treatment</label>
+                    <input type="text" name="initial_treatment" class="form-control" placeholder="e.g. Closed reduction and cast">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">Create Case</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 3: Log Visit -->
+<div class="modal fade" id="newVisitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="POST" action="{{ url_for('create_visit_action') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Follow-up Visit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Select Fracture Case *</label>
+                    <select name="case_id" class="form-select" required>
+                        {% for p in patients %}
+                            {% for c in p.fracture_cases %}
+                            <option value="{{ c.id }}">{{ c.case_code }} ({{ p.first_name }} {{ p.last_name }} — {{ c.anatomical_site }})</option>
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Visit Date *</label>
+                    <input type="date" name="visit_date" class="form-control" required>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col">
+                        <label class="form-label small fw-bold">Pain Score (0-10)</label>
+                        <input type="number" name="pain_score" class="form-control" min="0" max="10" value="4">
+                    </div>
+                    <div class="col">
+                        <label class="form-label small fw-bold">Weight Bearing Status</label>
+                        <select name="weight_bearing_status" class="form-select">
+                            <option value="Non-weight-bearing">Non-weight-bearing</option>
+                            <option value="Partial weight-bearing">Partial weight-bearing</option>
+                            <option value="Full weight-bearing">Full weight-bearing</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Scheduled Next Appointment (Future)</label>
+                    <input type="date" name="scheduled_next_date" class="form-control">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">Clinical Examination Notes</label>
+                    <textarea name="clinical_notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">Log Visit</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

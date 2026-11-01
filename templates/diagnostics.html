@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% set active_page = "diagnostics" %}
+
+{% block title %}System Diagnostics — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card card-medical mb-4">
+            <div class="card-header card-header-medical">
+                ⚙️ Runtime Hardware & ML Diagnostics
+            </div>
+            <div class="card-body small">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Python Version:</span>
+                        <code>{{ sys_info.python_version }}</code>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>PyTorch Version:</span>
+                        <code>{{ sys_info.torch_version }}</code>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>CUDA Hardware Acceleration:</span>
+                        <span class="badge {% if sys_info.cuda_available %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ 'Enabled' if sys_info.cuda_available else 'CPU Mode' }}
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Model Checkpoint Path:</span>
+                        <code class="text-truncate" style="max-width: 200px;">{{ sys_info.weights_path }}</code>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Checkpoint File Exists:</span>
+                        <span class="badge {% if sys_info.weights_exist %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                            {{ 'Found' if sys_info.weights_exist else 'Missing / Unconfigured' }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                🧠 Registered Model Versions
+            </div>
+            <div class="card-body p-0 small">
+                {% if model_versions %}
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Version Tag</th>
+                            <th>Dataset</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mv in model_versions %}
+                        <tr>
+                            <td><strong>{{ mv.model_name }}</strong></td>
+                            <td><code>{{ mv.version_tag }}</code></td>
+                            <td>{{ mv.training_dataset }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="p-3 text-muted">No model versions registered in database yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card card-medical mb-4">
+            <div class="card-header card-header-medical">
+                🛡️ Immutable System Audit Trail (Last 20 Events)
+            </div>
+            <div class="card-body p-0 small">
+                <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>Entity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for l in recent_logs %}
+                            <tr>
+                                <td>{{ l.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td><code>{{ l.action }}</code></td>
+                                <td>{{ l.user.username if l.user else 'System' }}</td>
+                                <td>{{ l.entity_type }} #{{ l.entity_id }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-medical">
+            <div class="card-header card-header-medical d-flex justify-content-between align-items-center">
+                <span>📁 Empirical Dataset Audit Report (Roboflow 100 & FracAtlas)</span>
+            </div>
+            <div class="card-body small" style="max-height: 350px; overflow-y: auto;">
+                {% if audit_content %}
+                <pre class="bg-light p-3 border rounded text-dark" style="white-space: pre-wrap; font-family: monospace;">{{ audit_content }}</pre>
+                {% else %}
+                <p class="text-muted">Run <code>python training/dataset_validation.py</code> to generate the audit report.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% set active_page = "patient_portal" %}
+
+{% block title %}Patient Portal — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        {% if portal_data.has_profile %}
+        <!-- Header -->
+        <div class="card card-medical mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="fw-bold mb-1">Welcome, {{ portal_data.patient.full_name }}</h4>
+                        <span class="text-muted small">Patient ID: <code>{{ portal_data.patient.patient_code }}</code> | DOB: {{ portal_data.patient.dob }}</span>
+                    </div>
+                    <span class="badge bg-primary">Patient Access Mode</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulated Notifications -->
+        {% if portal_data.simulated_notifications %}
+            {% for notif in portal_data.simulated_notifications %}
+            <div class="alert alert-warning border-warning shadow-sm">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>🔔 [{{ notif.label }}]:</strong> {{ notif.message }}
+                    </div>
+                    <span class="badge bg-warning text-dark">Simulated</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Active Fracture Recovery Timeline -->
+        <h5 class="fw-bold mb-3">🦴 My Recovery Journey</h5>
+
+        {% for c in portal_data.cases %}
+        <div class="card card-medical mb-4">
+            <div class="card-header card-header-medical d-flex justify-content-between">
+                <span>{{ c.anatomical_site }} Fracture</span>
+                <span class="badge bg-success">{{ c.status }}</span>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">Case Reference: <code>{{ c.case_code }}</code> | Date of Injury: {{ c.injury_date }}</p>
+
+                <h6>Follow-Up Milestones & Approved Summaries:</h6>
+                <div class="timeline">
+                    {% for v in c.visits %}
+                    <div class="border rounded p-3 mb-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ v.visit_code }}</strong> — {{ v.visit_date }} (Day {{ v.days_post_injury }} post injury)<br>
+                                <span class="small text-muted">Activity Recommendation: {{ v.weight_bearing_status }}</span>
+                            </div>
+                            <div>
+                                {% if v.has_approved_report %}
+                                    {% for r in v.reports %}
+                                    <a href="{{ url_for('download_report_by_code', report_code=r.report_code) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        📄 Download Summary ({{ r.report_code }})
+                                    </a>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Awaiting Doctor Sign-off</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div class="alert alert-info">
+            {{ portal_data.message }}
+        </div>
+        {% endif %}
+
+        <!-- Educational Safety Notice -->
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                ℹ️ Orthopedic Recovery Guidance
+            </div>
+            <div class="card-body small text-muted">
+                • Bone union progresses through continuous biological remodeling. Never alter weight-bearing status without clinician approval.<br>
+                • If you experience sudden swelling, acute pain spikes, or numbness, please contact emergency orthopedic care immediately.<br>
+                • All summary reports downloadable above have been personally reviewed and signed off by your treating doctor.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

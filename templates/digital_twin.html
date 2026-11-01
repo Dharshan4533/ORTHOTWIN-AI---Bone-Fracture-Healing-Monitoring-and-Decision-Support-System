@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% set active_page = "digital_twin" %}
+
+{% block title %}2D Digital Twin — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card card-medical">
+            <div class="card-header card-header-medical d-flex justify-content-between align-items-center">
+                <span>🦴 2D Digital Twin & Longitudinal Tracking</span>
+                <span class="badge bg-info text-dark">Planar 2D Projection Only</span>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('digital_twin_view') }}" class="row g-3 align-items-end mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Select Fracture Case</label>
+                        <select name="case_id" class="form-select" onchange="this.form.submit()">
+                            {% for c in all_cases %}
+                            <option value="{{ c.id }}" {% if selected_case and selected_case.id == c.id %}selected{% endif %}>
+                                {{ c.case_code }} — {{ c.patient.first_name }} {{ c.patient.last_name }} ({{ c.anatomical_site }}, Injured {{ c.injury_date }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+
+                {% if selected_case %}
+                <!-- Side-by-Side Visual Comparison -->
+                <h5 class="fw-bold mb-3">1. Chronological Scan Comparison</h5>
+                <div class="row g-3 mb-4">
+                    {% for v in selected_case.visits %}
+                    <div class="col-md-4 text-center">
+                        <div class="card p-2 border">
+                            <h6 class="fw-bold small mb-1">{{ v.visit_code }}</h6>
+                            <small class="text-muted mb-2 d-block">{{ v.visit_date }} (Day {{ v.days_post_injury }} post injury)</small>
+                            <div class="scan-container mb-2">
+                                {% if v.xray_images %}
+                                <img src="{{ url_for('serve_storage_file', filename=v.xray_images[0].file_path) }}" alt="Scan">
+                                {% else %}
+                                <div class="py-5 text-muted small">No scan uploaded</div>
+                                {% endif %}
+                            </div>
+                            <div class="text-start small">
+                                • Pain: <strong>{{ v.pain_score if v.pain_score is not None else 'N/A' }}/10</strong><br>
+                                • Activity: <strong>{{ v.weight_bearing_status or 'Unspecified' }}</strong><br>
+                                {% if v.xray_images and v.xray_images[0].extracted_features %}
+                                • Est. Gap: <code>{{ v.xray_images[0].extracted_features.fracture_gap_px }} px</code><br>
+                                • Callus Ratio: <code>{{ v.xray_images[0].extracted_features.callus_density_ratio }}</code>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <hr>
+
+                <!-- Plotly Interactive Chart -->
+                <h5 class="fw-bold mb-3">2. Observed Healing Trajectory (Experimental Proxies)</h5>
+                <div id="trajectoryPlot" style="height: 420px;"></div>
+
+                <div class="alert alert-secondary small mt-3">
+                    <strong>⚠️ Computational Proxy Notice:</strong>
+                    Fracture gap width (pixels) and callus density ratio are experimental 2D image-derived features.
+                    They do not constitute physical millimeter measurements or clinically validated biomarkers of union.
+                    Planar radiographs do not provide 3D volumetric status.
+                </div>
+                {% else %}
+                <p class="text-muted">No fracture case selected.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if plot_json %}
+<script>
+    var plotData = {{ plot_json | safe }};
+    Plotly.newPlot('trajectoryPlot', plotData.data, plotData.layout, {responsive: true});
+</script>
+{% endif %}
+{% endblock %}

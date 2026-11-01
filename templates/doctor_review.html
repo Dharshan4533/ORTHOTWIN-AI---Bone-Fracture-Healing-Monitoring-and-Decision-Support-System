@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% set active_page = "doctor_review" %}
+
+{% block title %}Doctor Review & Reports — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                📋 Select Scan for Clinical Review
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('doctor_review_view') }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Select Scan</label>
+                        <select name="image_id" class="form-select" onchange="this.form.submit()">
+                            {% for im in all_images %}
+                            <option value="{{ im.id }}" {% if selected_image and selected_image.id == im.id %}selected{% endif %}>
+                                Scan #{{ im.id }}: {{ im.visit.fracture_case.patient.first_name }} {{ im.visit.fracture_case.patient.last_name }} ({{ im.visit.fracture_case.anatomical_site }}) — {{ im.status }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+
+                {% if selected_image %}
+                <div class="scan-container mb-3">
+                    <img src="{{ url_for('serve_storage_file', filename=selected_image.file_path) }}" alt="X-ray">
+                </div>
+
+                <div class="small">
+                    <strong>Administrative Details:</strong><br>
+                    • Patient: <strong>{{ selected_image.visit.fracture_case.patient.first_name }} {{ selected_image.visit.fracture_case.patient.last_name }}</strong> ({{ selected_image.visit.fracture_case.patient.patient_code }})<br>
+                    • Case: <strong>{{ selected_image.visit.fracture_case.case_code }}</strong> ({{ selected_image.visit.fracture_case.anatomical_site }})<br>
+                    • Visit: <strong>{{ selected_image.visit.visit_code }}</strong> ({{ selected_image.visit.visit_date }}, Day {{ selected_image.visit.days_post_injury }})<br>
+                    • Pain Level: <strong>{{ selected_image.visit.pain_score if selected_image.visit.pain_score is not None else 'N/A' }}/10</strong><br>
+                    • Current Status: <span class="badge bg-primary">{{ selected_image.status }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        {% if selected_image %}
+        <!-- Attestation Form -->
+        <div class="card card-medical mb-4">
+            <div class="card-header card-header-medical d-flex justify-content-between align-items-center">
+                <span>Clinician Review & Sign-Off</span>
+                {% if selected_image.ai_analysis and selected_image.ai_analysis.clinician_review %}
+                <span class="badge bg-success">Attested by {{ selected_image.ai_analysis.clinician_review.reviewer.full_name }}</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Pending Doctor Sign-off</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('submit_review_action', image_id=selected_image.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Review Decision *</label>
+                        <select name="review_status" class="form-select">
+                            <option value="APPROVED" {% if current_review and current_review.review_status == 'APPROVED' %}selected{% endif %}>APPROVED — Agree with candidate localization & findings</option>
+                            <option value="MODIFIED" {% if current_review and current_review.review_status == 'MODIFIED' %}selected{% endif %}>MODIFIED — Candidate acceptable with clinical adjustments</option>
+                            <option value="REJECTED" {% if current_review and current_review.review_status == 'REJECTED' %}selected{% endif %}>REJECTED — Disagree with AI candidate detection</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Clinical Examination Findings & Rationale *</label>
+                        <textarea name="clinical_notes" class="form-control" rows="3" required placeholder="Document your clinical examination findings, fracture alignment, and treatment plan...">{{ current_review.clinical_notes if current_review else '' }}</textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        ✍️ Submit Binding Clinician Sign-Off
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- PDF Export Section -->
+        <div class="card card-medical">
+            <div class="card-header card-header-medical d-flex justify-content-between align-items-center">
+                <span>Formal Decision Support PDF Reports</span>
+                <form method="POST" action="{{ url_for('generate_pdf_action', image_id=selected_image.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-success">
+                        📄 Generate New PDF Report
+                    </button>
+                </form>
+            </div>
+            <div class="card-body">
+                {% if reports %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Report Code</th>
+                                <th>Generated Date</th>
+                                <th>Generated By</th>
+                                <th>Download</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in reports %}
+                            <tr>
+                                <td><code>{{ r.report_code }}</code></td>
+                                <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ r.generated_by.full_name }}</td>
+                                <td>
+                                    <a href="{{ url_for('download_report', report_id=r.id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        ⬇️ Download PDF
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0">No PDF reports generated yet for this visit. Click the button above to generate a ReportLab decision support summary.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

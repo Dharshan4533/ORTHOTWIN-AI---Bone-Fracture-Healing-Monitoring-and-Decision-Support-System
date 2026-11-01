@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% set active_page = "upload" %}
+
+{% block title %}Ingest Radiograph — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                📤 Ingest & Validate X-Ray Scan
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('upload_action') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Associate Scan with Follow-Up Visit *</label>
+                        <select name="visit_id" class="form-select" required>
+                            {% for p in patients %}
+                                {% for c in p.fracture_cases %}
+                                    {% for v in c.visits %}
+                                    <option value="{{ v.id }}">
+                                        {{ v.visit_code }} ({{ p.first_name }} {{ p.last_name }} — {{ c.anatomical_site }}, Day {{ v.days_post_injury }})
+                                    </option>
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Radiograph File (JPEG or PNG, Max 15MB, Min 256x256) *</label>
+                        <input type="file" name="xray_file" class="form-control" accept=".jpg,.jpeg,.png" required>
+                        <div class="form-text">File is validated for structural corruption, magic byte signatures, and duplicate hashes.</div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Validate & Ingest Radiograph</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                🛡️ Ingestion Quality Gate Specifications
+            </div>
+            <div class="card-body small">
+                <ul class="mb-0">
+                    <li><strong>Format Verification:</strong> Rejects renamed files; enforces genuine JPEG/PNG magic bytes.</li>
+                    <li><strong>Dimension Enforcement:</strong> Strictly requires resolution $\ge 256 \times 256$ pixels.</li>
+                    <li><strong>Sharpness Gate:</strong> Computes Laplacian variance. Scores $< 100$ flagged for motion blur.</li>
+                    <li><strong>Dynamic Contrast:</strong> Standard deviation $< 25$ flagged for restricted dynamic range.</li>
+                    <li><strong>Duplicate Guard:</strong> Cryptographic SHA-256 and perceptual dHash checks.</li>
+                    <li><strong>Preservation:</strong> Original raw file saved intact; non-destructive CLAHE review copies created separately.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                📁 Recently Ingested Scans
+            </div>
+            <div class="card-body p-0">
+                {% if recent_images %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Scan #</th>
+                                <th>Patient / Case</th>
+                                <th>Visit</th>
+                                <th>Status</th>
+                                <th>Blur Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for img in recent_images %}
+                            <tr>
+                                <td><strong>#{{ img.id }}</strong></td>
+                                <td>
+                                    {{ img.visit.fracture_case.patient.first_name }} {{ img.visit.fracture_case.patient.last_name }}<br>
+                                    <span class="text-muted">{{ img.visit.fracture_case.anatomical_site }}</span>
+                                </td>
+                                <td>{{ img.visit.visit_code }} (Day {{ img.visit.days_post_injury }})</td>
+                                <td><span class="badge bg-secondary">{{ img.status }}</span></td>
+                                <td>{{ "%.1f"|format(img.validation_result.blur_score) if img.validation_result else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-3 text-center text-muted">No images ingested yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

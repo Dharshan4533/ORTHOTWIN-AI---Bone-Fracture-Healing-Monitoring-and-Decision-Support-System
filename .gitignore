@@ -1,0 +1,70 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Node / Frontend Build Artifacts
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# OrthoTwin AI Storage & SQLite Database
+*.db
+*.sqlite
+*.sqlite3
+storage/uploads/raw/*
+!storage/uploads/raw/.gitkeep
+storage/uploads/processed/*
+!storage/uploads/processed/.gitkeep
+storage/reports/*
+!storage/reports/.gitkeep
+
+# Datasets & Large Archives (Exclude raw extracts & zip archives like FracAtlas >100MB)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+data/raw/*
+!data/raw/.gitkeep
+
+# Model Checkpoints & Ultralytics Training Runs
+*.pt
+*.pth
+*.onnx
+*.bin
+*.weights
+models/weights/*
+!models/weights/.gitkeep
+runs/
+
+# Logs & Temporary Files
+*.log
+*.tmp
+*.bak
+
+# Editor & OS Artifacts
+.vscode/
+.idea/
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store

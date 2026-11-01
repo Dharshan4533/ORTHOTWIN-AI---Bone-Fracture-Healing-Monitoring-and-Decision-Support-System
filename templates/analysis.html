@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% set active_page = "analysis" %}
+
+{% block title %}AI Fracture Detection — OrthoTwin AI{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card card-medical">
+            <div class="card-header card-header-medical">
+                🧠 Select Scan for Detection
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('analysis_view') }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Select Radiograph</label>
+                        <select name="image_id" class="form-select" onchange="this.form.submit()">
+                            {% for im in all_images %}
+                            <option value="{{ im.id }}" {% if selected_image and selected_image.id == im.id %}selected{% endif %}>
+                                Image #{{ im.id }} ({{ im.visit.fracture_case.patient.first_name }} {{ im.visit.fracture_case.patient.last_name }} — {{ im.visit.fracture_case.anatomical_site }}, Day {{ im.visit.days_post_injury }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+
+                {% if selected_image %}
+                <form method="POST" action="{{ url_for('run_detection_action', image_id=selected_image.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Confidence Cutoff Threshold</label>
+                        <input type="range" class="form-range" min="0.05" max="0.85" step="0.05" name="conf_threshold" value="0.20" oninput="this.nextElementSibling.value = this.value">
+                        <output class="small fw-bold">0.20</output>
+                        <div class="form-text small">Lower to 0.10–0.15 for subtle or hairline fractures.</div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            ⚡ Run YOLOv8 Fracture Detection
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+                <div class="small">
+                    <strong>Current Scan Metadata:</strong><br>
+                    • Status: <span class="badge bg-secondary">{{ selected_image.status }}</span><br>
+                    • Resolution: {{ selected_image.validation_result.width }}×{{ selected_image.validation_result.height }} px<br>
+                    • Sharpness: {{ "%.1f"|format(selected_image.validation_result.blur_score) }}<br>
+                    • Contrast: {{ "%.1f"|format(selected_image.validation_result.contrast_score) }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if not detector_loaded %}
+        <div class="alert alert-warning small">
+            <strong>⚠️ Model Checkpoint Note:</strong><br>
+            Trained YOLOv8 weights are not loaded. The system operates in baseline clinician review mode.
+            To train weights, run <code>python training/train_detection.py</code>.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-8">
+        {% if selected_image %}
+        <div class="card card-medical">
+            <div class="card-header card-header-medical d-flex justify-content-between align-items-center">
+                <span>Radiograph Viewer & AI Candidate Overlays</span>
+                <span class="badge bg-light text-dark border">Image #{{ selected_image.id }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6 text-center">
+                        <h6 class="small fw-bold text-muted">Original Raw Radiograph</h6>
+                        <div class="scan-container">
+                            <img src="{{ url_for('serve_storage_file', filename=selected_image.file_path) }}" alt="Raw X-ray">
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <h6 class="small fw-bold text-muted">CLAHE Enhanced Review Copy</h6>
+                        <div class="scan-container">
+                            {% if selected_image.processed_path %}
+                            <img src="{{ url_for('serve_storage_file', filename=selected_image.processed_path) }}" alt="CLAHE X-ray">
+                            {% else %}
+                            <img src="{{ url_for('serve_storage_file', filename=selected_image.file_path) }}" alt="Raw X-ray">
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Detections Table -->
+                <h6>Candidate Lesion Detections:</h6>
+                {% if selected_image.ai_analysis and detections %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Candidate Classification</th>
+                                <th>Raw Detector Score</th>
+                                <th>Bounding Box Coordinates [x1, y1, x2, y2]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in detections %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><span class="badge bg-danger">{{ d.class_name }}</span></td>
+                                <td><strong>{{ "%.3f"|format(d.confidence) }}</strong></td>
+                                <td><code>{{ d.bbox }}</code></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="small text-muted fst-italic">
+                    * Raw detector scores reflect localized feature activation and are NOT calibrated clinical diagnostic probabilities.
+                </div>
+                {% else %}
+                <div class="alert alert-info small">
+                    <strong>ℹ️ No candidates met the current confidence cutoff.</strong><br>
+                    Subtle fractures or fissure lines often have scores around 0.10–0.25. Move the Confidence Cutoff Threshold slider to <strong>0.15</strong> or <strong>0.10</strong> and run detection again.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">Please select a radiograph to inspect.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

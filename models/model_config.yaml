@@ -1,0 +1,54 @@
+# OrthoTwin AI — Model Architecture & Training Configuration
+
+task: detection
+model_type: yolov8
+default_model_name: yolov8n.pt
+
+inference:
+  weights_path: models/weights/fracture_yolov8.pt
+  imgsz: 640
+  conf_threshold: 0.35
+  iou_threshold: 0.45
+  device: cpu # or '0' for CUDA GPU if available
+  max_det: 10
+
+training:
+  epochs: 30
+  batch_size: 8
+  imgsz: 640
+  learning_rate: 0.005
+  optimizer: AdamW
+  weight_decay: 0.0005
+  seed: 42
+  patience: 10
+  save_period: 5
+  plots: true
+
+datasets:
+  primary:
+    name: roboflow_100_bone_fracture
+    zip_path: bone fracture.v1-release-640.yolov8.zip
+    num_classes: 4
+    classes:
+      0: angle
+      1: fracture
+      2: line
+      3: messed_up_angle
+  secondary:
+    name: fracatlas
+    zip_path: FracAtlas.zip
+    num_classes: 1
+    classes:
+      0: fracture
+
+segmentation:
+  architecture: unet
+  weights_path: models/weights/fracture_unet.pth
+  in_channels: 1
+  out_channels: 1
+  is_enabled: false # Strictly disabled until verified masks trained
+
+disclaimer: |
+  ACADEMIC PROTOTYPE NOTICE:
+  Model weights and outputs are for experimental research evaluation only.
+  Not validated for autonomous clinical diagnostic application.
